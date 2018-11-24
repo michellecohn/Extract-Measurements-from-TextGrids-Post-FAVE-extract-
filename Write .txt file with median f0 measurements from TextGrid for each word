@@ -1,0 +1,84 @@
+######################################
+#
+# Write log file wtih for median vowel f0
+#
+# Needs: textgrid with vowel annotated in arpabet 
+# (takes output from FAVE-align) 
+#
+# Only calculates f0 for vowels (need to have a numeral, in arpabet e.g. AA1)
+#
+#
+# MC, 11/24/18
+#
+#######################################
+
+# (1) Define I/O directories #######
+directory$ = "/Volumes/Michelle_2018/ICHPhS_2019_Siri_Imitation_Measurements/Study 1 (Handcorrected)/"
+
+
+f0_minimum = 80
+f0_maximum = 300
+
+# (2) Define headers 
+header_row$ = "Filename" + tab$ + "Word" + tab$ + "F0" +  newline$
+header_row$ > 'directory$'f0_measurements_log.txt
+
+# (3) Loop through TextGrids 
+Create Strings as file list...  list 'directory$'*.TextGrid
+n_textgrids = Get number of strings
+
+for ifile from 1 to n_textgrids
+	select Strings list
+	curr_file$ = Get string... 'ifile'
+    Read from file... 'directory$''curr_file$'
+	wavfile$ = curr_file$ - ".TextGrid"
+	Read from file... 'directory$''wavfile$'.wav
+
+
+   	# Here we make a variable called "object_name$" that will be equal to the filename minus the ".wav" extension
+   	object_name$ = selected$ ("Sound")
+	
+
+   # Now we figure out how many intervals there are in tier 2, and step through them one at a time.
+	# If an intervals label is non-null, we get its duration and write it to the log file.
+	selectObject: "TextGrid 'wavfile$'"
+  	number_of_intervals = Get number of intervals... 1
+				
+ 	for i from 1 to number_of_intervals
+			selectObject: "TextGrid 'wavfile$'"
+			interval_label$ = Get label of interval... 1 'i'
+			arpabet_num$ = right$(interval_label$, 1)
+
+			if interval_label$ <> "" 
+				if arpabet_num$ = "1"
+
+					######### Get start/end of vowel, vowel label, word label #########
+					begin_vowel = Get starting point... 1 'i'
+               		end_vowel = Get end point... 1 'i'
+					word_int = Get interval at time... 2 begin_vowel
+					word_label$ = Get label of interval... 2 'word_int'
+
+					######### Extract the vowel as a new sound object #########
+					selectObject: "Sound 'wavfile$'"
+					Extract part... begin_vowel end_vowel Rectangular 1 no
+					vowel_extract_name$ = "'wavfile$'_'word_label$'_vowel"
+					Rename... 'vowel_extract_name$'
+
+					######### Calculate median f0 #########
+					selectObject: "Sound 'vowel_extract_name$'"
+			
+					To Pitch... 0 f0_minimum f0_maximum
+					median = Get quantile... 0 0 0.5 Hertz
+
+				    fileappend "'directory$'f0_measurements_log.txt" 'wavfile$''tab$''word_label$''tab$''interval_label$''tab$''median''newline$'
+
+
+					
+			endif
+		endif 
+	endfor
+
+
+endfor
+
+
