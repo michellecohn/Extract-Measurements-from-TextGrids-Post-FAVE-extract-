@@ -1,6 +1,6 @@
 ######################################
 #
-# Write log file wtih for median vowel f0
+# Get median vowel f0 
 #
 # Needs: textgrid with vowel annotated in arpabet 
 # (takes output from FAVE-align) 
@@ -20,7 +20,7 @@ f0_minimum = 80
 f0_maximum = 300
 
 # (2) Define headers 
-header_row$ = "Filename" + tab$ + "Word" + tab$ + "F0" +  newline$
+header_row$ = "Filename" + tab$ + "Word" + tab$ + "Vowel" + tab$ + "Median F0" +  newline$
 header_row$ > 'directory$'f0_measurements_log.txt
 
 # (3) Loop through TextGrids 
@@ -80,5 +80,3 @@ for ifile from 1 to n_textgrids
 
 
 endfor
-
-
