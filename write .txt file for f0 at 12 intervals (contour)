@@ -1,0 +1,151 @@
+######################################
+#
+# Get mean vowel f0 at 12 intervals
+#
+# Needs: textgrid with vowel annotated in arpabet 
+# (takes output from FAVE-align) 
+#
+# Only calculates f0 for vowels (need to have a numeral, in arpabet e.g. AA1)
+#
+#
+# MC, 11/24/18
+#
+# adapted from https://www.acsu.buffalo.edu/~cdicanio/scripts/Get_pitch.praat
+#
+#######################################
+
+# (1) Define I/O directories #######
+directory$ = "/Volumes/Michelle_2018/ICHPhS_2019_Siri_Imitation_Measurements/Study 2 (Handcorrected; exposure 2 from social imitation over time)/"
+
+current_study$ = "2"
+
+f0_minimum = 80
+f0_maximum = 300
+
+#Number of intervals you wish to extract pitch from.
+numintervals = 12
+
+analysis_points_time_step = 0.01
+
+
+# (2) Define headers 
+header_row$ = "Filename" + tab$ + "Word" + tab$ + "Start" + tab$ + "End" 
+
+for i to numintervals
+header_row$ = header_row$ + tab$ + "Mean_f0_Interval_'i'"
+endfor
+
+header_row$ = header_row$ + newline$
+
+header_row$ > 'directory$'f0_contour_measurements_logfile_study'current_study$'.txt
+
+
+
+# (3) Loop through TextGrids 
+Create Strings as file list...  list 'directory$'*.TextGrid
+n_textgrids = Get number of strings
+
+for ifile from 1 to n_textgrids
+
+	select Strings list
+	curr_file$ = Get string... 'ifile'
+    Read from file... 'directory$''curr_file$'
+	wavfile$ = curr_file$ - ".TextGrid"
+	Read from file... 'directory$''wavfile$'.wav
+
+
+   	# Here we make a variable called "object_name$" that will be equal to the filename minus the ".wav" extension
+   	object_name$ = selected$ ("Sound")
+	
+
+   # Now we figure out how many intervals there are in tier 2, and step through them one at a time.
+	# If an intervals label is non-null, we get its duration and write it to the log file.
+	selectObject: "TextGrid 'wavfile$'"
+  	number_of_intervals = Get number of intervals... 1
+				
+
+ 	for i from 1 to number_of_intervals
+			selectObject: "TextGrid 'wavfile$'"
+			interval_label$ = Get label of interval... 1 'i'
+			arpabet_num$ = right$(interval_label$, 1)
+
+			if interval_label$ <> "" 
+				if arpabet_num$ = "1"
+
+					######### Get start/end of vowel, vowel label, word label #########
+					begin_vowel = Get starting point... 1 'i'
+               				end_vowel = Get end point... 1 'i'
+					word_int = Get interval at time... 2 begin_vowel
+					word_label$ = Get label of interval... 2 'word_int'
+
+					######### Extract the vowel as a new sound object #########
+					selectObject: "Sound 'wavfile$'"
+					Extract part... begin_vowel end_vowel Rectangular 1 no
+					vowel_extract_name$ = "'wavfile$'_'word_label$'_vowel"
+					Rename... 'vowel_extract_name$'
+
+					######### Calculate median f0 for each interval#########
+					selectObject: "Sound 'vowel_extract_name$'"
+			
+ 					start 		= 0.00
+					end 		= Get end time
+					interval  	= (end-start)/numintervals
+
+
+      				fileappend "'directory$'f0_contour_measurements_logfile_study'current_study$'.txt" 'wavfile$''tab$''word_label$''tab$''start''tab$''end''tab$'
+
+
+					######### Calculate mean f0 for each sub-interval#########
+					To Pitch... 0 f0_minimum f0_maximum
+
+					total = 0
+         			number = 0
+
+					intvl_num = 1
+      				position  = start
+
+    				while position <= end
+
+							# Within each interval, take f0 measurements every 0.01 s
+							interval 
+						
+							while position < start + intvl_num * interval
+
+            				hertz  = Get value at time... position Hertz Linear
+			
+
+           					if hertz = undefined
+	         					 # do nothing
+            				else
+                  				total  = total + hertz
+                  				number = number + 1
+            				endif
+								position = position + analysis_points_time_step
+         					endwhile
+
+      		
+					# Calculate mean & median
+					average  = total / number
+
+						if total = 0
+							average$ = "NA"
+        				else
+							average$ = fixed$(average, 1)
+						endif
+
+					
+      					fileappend "'directory$'f0_contour_measurements_logfile_study'current_study$'.txt" 'average$''tab$'
+
+         				intvl_num = intvl_num + 1
+
+		endwhile
+
+
+      					fileappend "'directory$'f0_contour_measurements_logfile_study'current_study$'.txt" 'newline$'
+
+					
+	
+			endif
+		endif 
+	endfor
+endfor
